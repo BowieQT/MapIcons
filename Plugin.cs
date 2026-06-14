@@ -9,7 +9,7 @@ public class Plugin : BaseSettingsPlugin<Settings> {
 
     //--| Properties |-------------------------------------------------------------------------------------------------
     private DXT.IconAtlas _iconAtlas;
-    public DXT.IconAtlas IconAtlas => _iconAtlas ??= new(Graphics, "Diesel_MapIcons", Path.Combine(Path.GetDirectoryName(typeof(Plugin).Assembly.Location), "media", "MapIcons.png"), new Vector2(32, 32));
+    public DXT.IconAtlas IconAtlas => _iconAtlas ??= new(Graphics, "Diesel_MapIcons", Path.Combine(DirectoryFullName, "media", "MapIcons.png"), new Vector2(32, 32));
 
 
     private IconBuilder _iconBuilder;

@@ -245,7 +245,7 @@ public sealed class UserInterface : PluginModule {
                 TreeIcons = new List<TreeIcon> {
                     new TreeIcon {
                         Name = "Fractuirng Mirror",
-                        MapIconType = MapIconTypes.BloodBag,
+                        MapIconType = MapIconTypes.FracturingMirror,
                         Config = TreeIconConfigs.Default,
                         DefaultSettings = new MapIconSettings {
                             Index = 74,

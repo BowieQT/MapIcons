@@ -78,7 +78,7 @@ public sealed class IconBuilder : PluginModule
 
         foreach (var entity in GameController.Entities) {
             if (entity.GetHudComponent<MapIcon>() is { Version: var version, } && version >= IconVersion) continue;
-            MapIcon icon = CreateIcon(entity);
+            var icon = CreateIcon(entity);
             if (icon == null) continue;
             icon.Version = IconVersion;
             entity.SetHudComponent(icon);
@@ -313,7 +313,7 @@ public sealed class IconBuilder : PluginModule
     }
     private MapIcon CreateIcon_Delirium(Entity entity) {
         var icon = new MapIcon(entity);
-        icon.Renderer = MapIconRenderers.Monster;
+        icon.Renderer = MapIconRenderers.Chest;
         icon.Name = entity.RenderName;
         icon.Render = () => entity.IsAlive;
 
@@ -327,58 +327,36 @@ public sealed class IconBuilder : PluginModule
         DebugMonsterIcon(icon);
         return icon;
     }
-    private MapIcon CreateIcon_Ingame(Entity entity) {
+    private (MapIcon? icon, bool skip) CreateIcon_Ingame(Entity entity) {
+        var minimapIconComponent = entity.GetComponent<MinimapIcon>();
+        if (minimapIconComponent == null || minimapIconComponent.IsHide) return (null , false);
+
+        var minimapIconName = minimapIconComponent.Name;
+        if (string.IsNullOrEmpty(minimapIconName)) return (null, false);
+
+        var iconIndexByName = Extensions.IconIndexByName(minimapIconName);
+        if (iconIndexByName == MapIconsIndex.MyPlayer) return (null, false);
+
         var icon = new MapIcon(entity);
         icon.Renderer = MapIconRenderers.IngameIcon;
         icon.Name = entity.RenderName;
 
-        var minimapIconComponent = entity.GetComponent<MinimapIcon>();
-        if (minimapIconComponent == null || minimapIconComponent.IsHide) return null;
-
-        var minimapIconName = minimapIconComponent.Name;
-        //if (string.IsNullOrEmpty(minimapIconName)) return null;
-
-        var iconIndexByName = ExileCore2.Shared.Helpers.Extensions.IconIndexByName(minimapIconName);
-        if (iconIndexByName == MapIconsIndex.MyPlayer) return null;
-
         icon.InGameTexture = new HudTexture("Icons.png") { UV = SpriteHelper.GetUV(iconIndexByName), Size = 16 };
-        // revisit this later and recheck logic
-        var isHidden = false;
-        var transitionableFlag1 = 1;
-        var shrineIsAvailable = true;
-        var isOpened = false;
 
         icon.Render = () => {
-            if (!entity.IsValid) return true;
+            //if (!entity.IsValid) return true;
+            if (icon.Settings.DrawState == IngameIconDrawStates.Off || (icon.Settings.DrawState == IngameIconDrawStates.Ranged && icon.Entity.IsValid)) return false;
 
-            var minimapIcon = entity.GetComponent<MinimapIcon>();
+            var minimapIcon = icon.Entity.GetComponent<MinimapIcon>();
             if (minimapIcon?.IsHide == true) return false;
 
-            var transitionable = entity.GetComponent<Transitionable>();
-            if (transitionable?.Flag1 != 1) return false;
+            var transitionable = icon.Entity.GetComponent<Transitionable>();
+            if (transitionable != null && transitionable.Flag1 != 1) return false;
 
-            var shrine = entity.GetComponent<Shrine>();
+            var shrine = icon.Entity.GetComponent<Shrine>();
             if (shrine?.IsAvailable == false) return false;
 
-            var chest = entity.GetComponent<Chest>();
-            if (chest?.IsOpened == true) return false;
-
-            return true;
-        };
-
-        icon.Render = () => {
-            if (!entity.IsValid) return true;
-
-            var minimapIcon = entity.GetComponent<MinimapIcon>();
-            if (minimapIcon?.IsHide == true) return false;
-
-            var transitionable = entity.GetComponent<Transitionable>();
-            if (transitionable?.Flag1 != 1) return false;
-
-            var shrine = entity.GetComponent<Shrine>();
-            if (shrine?.IsAvailable == false) return false;
-
-            var chest = entity.GetComponent<Chest>();
+            var chest = icon.Entity.GetComponent<Chest>();
             if (chest?.IsOpened == true) return false;
 
             return true;
@@ -422,9 +400,9 @@ public sealed class IconBuilder : PluginModule
             }
         }
         DebugIngameIcon(icon);
-        return icon;
+        return (icon, false);
     }
-    private MapIcon CreateIcon(Entity entity) {
+    private MapIcon? CreateIcon(Entity entity) {
         if (entity is null) return null;
         if (string.IsNullOrEmpty(entity.Path)) return null;
         if (!entity.IsValid) return null; // only adding the icon if its valid, to make sure components are available when creating icon... 
@@ -473,6 +451,8 @@ public sealed class IconBuilder : PluginModule
         if (entity.Path.StartsWith("Metadata/Monsters/MarakethSanctumTrial/Hazards/", StringComparison.Ordinal)) return CreateIcon_Trap(entity);
         // SKIP entity type terrain 
         if (entity.Type == EntityType.Terrain) return null;
+        // Delirium Icons
+        if (entity.Path.StartsWith("Metadata/Monsters/LeagueDelirium/DoodadDaemons", StringComparison.Ordinal)) return CreateIcon_Delirium(entity);
         // Monster Icon
         if (entity.Type == EntityType.Monster) {
             if (entity.IsHostile) {
@@ -485,10 +465,11 @@ public sealed class IconBuilder : PluginModule
         // Chest
         if (entity.Type == EntityType.Chest && !entity.IsOpened) return CreateIcon_Chest(entity);
         // Ingame Icon
-        if (entity.HasComponent<MinimapIcon>()) return CreateIcon_Ingame(entity);
-        // Delirium Icons
-        if (entity.Path.StartsWith("Metadata/Monsters/LeagueDelirium/DoodadDaemons", StringComparison.Ordinal)) return CreateIcon_Delirium(entity);
-        // Player
+        if (entity.HasComponent<MinimapIcon>()) {
+            var (icon, skip) = CreateIcon_Ingame(entity);
+            if (icon != null || skip) return icon;
+        }
+        // Player 
         if (entity.Type == EntityType.Player) {
             if (!entity.IsValid) return null;
             var icon = new MapIcon(entity);

@@ -75,11 +75,12 @@ public sealed class IconRenderer : PluginModule {
         foreach (var mapIcon in renderedMapIcons) {
 
             if (mapIcon?.Entity == null) continue;
-            if (!mapIcon.Render()) continue;
             if (mapIcon.Settings == null) {
                 mapIcon.Settings = Settings.GetIconSettings(mapIcon.Type);
                 if (mapIcon.Settings == null) continue;
             }
+            if (!mapIcon.Render()) continue;
+
 
             if (mapIcon.Settings.Check_IsAlive && !mapIcon.Entity.IsAlive) continue;
             if (mapIcon.Settings.Check_IsOpened && mapIcon.Entity.IsOpened) continue;
@@ -96,7 +97,6 @@ public sealed class IconRenderer : PluginModule {
 
             // draw ingame icons
             if (mapIcon.Renderer == MapIconRenderers.IngameIcon) {
-                if (mapIcon.Settings.DrawState == IngameIconDrawStates.Off || (mapIcon.Settings.DrawState == IngameIconDrawStates.Ranged && mapIcon.Entity.IsValid)) continue;
 
                 iconFileName = mapIcon.InGameTexture.FileName;
                 iconSize = (int)mapIcon.InGameTexture.Size;
